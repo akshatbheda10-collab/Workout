@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KINETIC // Athletic Timer & Workout Suite</title>
+    <style>
+        /* ==========================================================================
+           CSS VARIABLES & DESIGN TOKENS (High-Contrast Athletic Dark Theme)
+           ========================================================================== */
+        :root {
+            --bg-primary: #09090b;
+            --bg-surface: #121215;
+            --bg-elevated: #1c1c21;
+            --bg-hover: #27272e;
+            --border-subtle: #27272a;
+            --border-active: #3f3f46;
+
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+
+            /* Phase & State Accents */
+            --accent-work: #10b981;      /* Electric Emerald */
+            --accent-work-glow: rgba(16, 185, 129, 0.25);
+            --accent-rest: #06b6d4;      /* Cyan Pulse */
+            --accent-rest-glow: rgba(6, 182, 212, 0.25);
+            --accent-prep: #f59e0b;      /* Amber Warning */
+            --accent-prep-glow: rgba(245, 158, 11, 0.25);
+            --accent-danger: #ef4444;    /* Crimson Stop */
+            --accent-primary: #eab308;   /* Volt Yellow Default */
+            --accent-primary-glow: rgba(234, 179, 8, 0.2);
+
+            --current-accent: var(--accent-primary);
+            --current-glow: var(--accent-primary-glow);
+
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        /* Dynamic Theme Modifiers based on Active Phase */
+        body[data-phase="work"] {
+            --current-accent: var(--accent-work);
+            --current-glow: var(--accent-work-glow);
+        }
+        body[data-phase="rest"], body[data-phase="set_rest"] {
+            --current-accent: var(--accent-rest);
+            --current-glow: var(--accent-rest-glow);
+        }
+        body[data-phase="prep"] {
+            --current-accent: var(--accent-prep);
+            --current-glow: var(--accent-prep-glow);
+        }
+        body[data-phase="stopwatch"], body[data-phase="countdown"] {
+            --current-accent: var(--accent-primary);
+            --current-glow: var(--accent-primary-glow);
+        }
+
+        /* ==========================================================================
+           RESET & BASE LAYOUT
+           ========================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: inherit;
+            transition: all 0.15s ease;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        input[type="number"] {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 700;
+            width: 100%;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--current-accent);
+        }
+
+        /* ==========================================================================
+           HEADER & NAVIGATION BAR
+           ========================================================================== */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.875rem 1.25rem;
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            font-size: 1.15rem;
+            text-transform: uppercase;
+        }
+
+        .brand-badge {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            background: var(--current-accent);
+            box-shadow: 0 0 12px var(--current-accent);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .utility-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .util-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .util-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .util-btn.active {
+            background: rgba(234, 179, 8, 0.14);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .util-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .util-label {
+            display: none;
+        }
+
+        @media (min-width: 640px) {
+            .util-label {
+                display: inline;
+            }
+        }
+
+        /* ==========================================================================
+           MAIN LAYOUT GRID
+           ========================================================================== */
+        main {
+            flex: 1;
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1.25rem;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (min-width: 960px) {
+            main {
+                grid-template-columns: 1.35fr 0.9fr;
+                align-items: start;
+                padding: 1.75rem;
+            }
+        }
+
+        /* ==========================================================================
+           CARDS & PANELS
+           ========================================================================== */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 640px) {
+            .card {
+                padding: 1.75rem;
+            }
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            gap: 0.5rem;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ==========================================================================
+           MODE TABS
+           ========================================================================== */
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: var(--bg-primary);
+            padding: 0.3rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            margin-bottom: 1.5rem;
+        }
+
+        .mode-tab {
+            padding: 0.65rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .mode-tab.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-active);
+        }
+
+        /* ==========================================================================
+           PROGRESS RING & DIGITAL CLOCK DISPLAY
+           ========================================================================== */
+        .timer-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin: 0.5rem 0 1.5rem;
+        }
+
+        .ring-container {
+            position: relative;
+            width: min(320px, 76vw);
+            height: min(320px, 76vw);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (min-width: 640px) {
+            .ring-container {
+                width: 360px;
+                height: 360px;
+            }
+        }
+
+        .progress-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            filter: drop-shadow(0 0 16px var(--current-glow));
+        }
+
+        .ring-track {
+            fill: none;
+            stroke: var(--bg-elevated);
+            stroke-width: 10;
+        }
+
+        .ring-progress {
+            fill: none;
+            stroke: var(--current-accent);
+            stroke-width: 10;
+            stroke-linecap: round;
+            transition: stroke 0.3s ease;
+        }
+
+        .clock-inner {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .phase-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.85rem;
+            border-radius: var(--radius-full);
+            background: var(--bg-elevated);
+            border: 1px solid var(--current-accent);
+            color: var(--current-accent);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            transition: all 0.25s ease;
+        }
+
+        .digital-clock {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            color: var(--text-primary);
+            user-select: none;
+        }
+
+        .clock-main {
+            font-size: clamp(2.85rem, 11vw, 4.35rem);
+        }
+
+        .clock-ms {
+            font-size: clamp(1.35rem, 4.5vw, 1.95rem);
+            color: var(--current-accent);
+            margin-left: 0.15rem;
+            transition: color 0.3s ease;
+        }
+
+        .sub-readout {
+            margin-top: 0.65rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+            min-height: 1.25rem;
+        }
+
+        /* ==========================================================================
+           PRIMARY TRANSPORT CONTROLS
+           ========================================================================== */
+        .controls-row {
+            display: grid;
+            grid-template-columns: 1fr 1.6fr 1fr;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+
+        .btn-transport {
+            padding: 1rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--current-accent);
+            color: #09090b;
+            box-shadow: 0 4px 20px var(--current-glow);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.08);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-active);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-hover);
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .shortcut-hint {
+            text-align: center;
+            margin-top: 0.85rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .shortcut-hint {
+                display: block;
+            }
+        }
+
+        kbd {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-active);
+            border-radius: 4px;
+            padding: 0.1rem 0.35rem;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+        }
+
+        /* ==========================================================================
+           MODE-SPECIFIC CONFIGURATORS & PRESETS
+           ========================================================================== */
+        .mode-panel {
+            display: none;
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .mode-panel.active {
+            display: block;
+        }
+
+        .preset-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preset-btn {
+            padding: 0.45rem 0.8rem;
+            border-radius: var(--radius-full);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .preset-btn:hover, .preset-btn.active {
+            border-color: var(--current-accent);
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        /* HIIT Config Grid */
+        .hiit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        @media (min-width: 540px) {
+            .hiit-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .config-field {
+            background: var(--bg-elevated);
+            padding: 0.65rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .config-field label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.35rem;
+        }
+
+        /* Countdown Quick Adjusters */
+        .countdown-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .quick-add-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .quick-add-btn {
+            padding: 0.6rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .quick-add-btn:hover {
+            border-color: var(--current-accent);
+            background: var(--bg-hover);
+        }
+
+        /* ==========================================================================
+           LAP TABLE (STOPWATCH)
+           ========================================================================== */
+        .lap-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .lap-list-wrapper {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+        }
+
+        .lap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 0.82rem;
+        }
+
+        .lap-table th {
+            position: sticky;
+            top: 0;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 0.55rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .lap-table th:first-child,
+        .lap-table td:first-child {
+            text-align: left;
+        }
+
+        .lap-table td {
+            padding: 0.55rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+        }
+
+        .lap-fastest {
+            color: var(--accent-work);
+            font-weight: 700;
+        }
+
+        .lap-slowest {
+            color: var(--accent-danger);
+            font-weight: 700;
+        }
+
+        .lap-badge {
+            display: inline-block;
+            font-family: var(--font-sans);
+            font-size: 0.62rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            margin-left: 0.35rem;
+            vertical-align: middle;
+        }
+
+        .lap-badge.fast {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-work);
+        }
+
+        .lap-badge.slow {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+        }
+
+        .empty-state {
+            padding: 1.75rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-family: var(--font-sans);
+            font-size: 0.85rem;
+        }
+
+        /* ==========================================================================
+           ACCESSORIES COLUMN (REP COUNTER, AUDIO MIXER, SESSION LOG)
+           ========================================================================== */
+        .accessories-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* Rep & Set Counter Widget */
+        .rep-widget {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .rep-display-box {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .rep-btn-step {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-active);
+            font-size: 1.65rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            flex-shrink: 0;
+        }
+
+        .rep-btn-step.plus {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--accent-work);
+            color: var(--accent-work);
+        }
+
+        .rep-btn-step:hover {
+            filter: brightness(1.15);
+        }
+
+        .rep-count-center {
+            text-align: center;
+            flex: 1;
+        }
+
+        .rep-number {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 2.75rem;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+
+        .rep-target-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            font-weight: 600;
+        }
+
+        .rep-progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .rep-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-work);
+            transition: width 0.2s ease;
+        }
+
+        .rep-meta-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 0.6rem;
+            align-items: end;
+        }
+
+        /* Audio & Coach Controls */
+        .coach-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .toggle-tile {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 0.9rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            text-align: left;
+        }
+
+        .toggle-tile.enabled {
+            border-color: var(--accent-work);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .toggle-info strong {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .toggle-info span {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .toggle-tile.enabled .status-dot {
+            background: var(--accent-work);
+            box-shadow: 0 0 8px var(--accent-work);
+        }
+
+        .volume-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--current-accent);
+            height: 6px;
+            background: var(--bg-elevated);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Session Log Preview & Summary */
+        .log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 0.7rem 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .log-item-main {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .log-item-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .log-item-meta {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .log-actions-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.85rem;
+        }
+
+        .btn-mini {
+            padding: 0.4rem 0.7rem;
+            border-radius: var(--radius-sm);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn-mini:hover {
+            color: var(--text-primary);
+            border-color: var(--border-active);
+        }
+
+        /* ==========================================================================
+           TOAST NOTIFICATION & MODAL
+           ========================================================================== */
+        .toast {
+            position: fixed;
+            bottom: 1.25rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(120%);
+            background: var(--bg-elevated);
+            border: 1px solid var(--current-accent);
+            color: var(--text-primary);
+            padding: 0.65rem 1.2rem;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+            z-index: 100;
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Fullscreen enhancements */
+        :fullscreen header {
+            background: rgba(18, 18, 21, 0.92);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body data-phase="stopwatch">
+
+    <!-- ======================================================================
+         TOP NAVIGATION & GLOBAL UTILITIES
+         ====================================================================== -->
+    <header>
+        <div class="brand">
+            <span class="brand-badge" id="brandBadge"></span>
+            <span>KINETIC // TIMER</span>
+        </div>
+
+        <div class="utility-bar">
+            <button type="button" class="util-btn" id="wakeLockBtn" title="Prevent screen from sleeping">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                </svg>
+                <span class="util-label" id="wakeLockLabel">Screen Awake: Off</span>
+            </button>
+
+            <button type="button" class="util-btn" id="fullscreenBtn" title="Toggle Fullscreen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+                <span class="util-label">Fullscreen</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ======================================================================
+         MAIN WORKOUT WORKSPACE
+         ====================================================================== -->
+    <main>
+        <!-- LEFT / PRIMARY COLUMN: TIMER ENGINE -->
+        <section class="card">
+            <!-- Mode Switcher -->
+            <div class="mode-tabs" role="tablist">
+                <button type="button" class="mode-tab active" data-mode="stopwatch" role="tab" aria-selected="true">Stopwatch</button>
+                <button type="button" class="mode-tab" data-mode="hiit" role="tab" aria-selected="false">HIIT / Tabata</button>
+                <button type="button" class="mode-tab" data-mode="countdown" role="tab" aria-selected="false">Countdown</button>
+            </div>
+
+            <!-- Circular Progress & Digital Readout -->
+            <div class="timer-stage">
+                <div class="ring-container">
+                    <svg class="progress-svg" viewBox="0 0 260 260">
+                        <circle class="ring-track" cx="130" cy="130" r="116"></circle>
+                        <circle class="ring-progress" id="progressRing" cx="130" cy="130" r="116" stroke-dasharray="728.85" stroke-dashoffset="0"></circle>
+                    </svg>
+
+                    <div class="clock-inner">
+                        <div class="phase-pill" id="phaseBadge">READY</div>
+                        <div class="digital-clock" aria-live="off">
+                            <span class="clock-main" id="clockMain">00:00</span>
+                            <span class="clock-ms" id="clockMs">.00</span>
+                        </div>
+                        <div class="sub-readout" id="subReadout">Lap 1 &bull; 00:00.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transport Controls -->
+            <div class="controls-row">
+                <button type="button" class="btn-transport btn-secondary" id="secondaryActionBtn">Lap</button>
+                <button type="button" class="btn-transport btn-primary" id="startPauseBtn">Start</button>
+                <button type="button" class="btn-transport btn-secondary" id="resetBtn">Reset</button>
+            </div>
+
+            <div class="shortcut-hint">
+                Shortcuts: <kbd>Space</kbd> Start/Pause &nbsp;&bull;&nbsp; <kbd>L</kbd> Lap / Skip &nbsp;&bull;&nbsp; <kbd>R</kbd> Reset
+            </div>
+
+            <!-- ==============================================================
+                 PANEL 1: STOPWATCH LAPS
+                 ============================================================== -->
+            <div class="mode-panel active" id="panel-stopwatch">
+                <div class="lap-header-actions">
+                    <span class="card-title">Split &amp; Lap Telemetry (<span id="lapCountLabel">0</span>)</span>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button type="button" class="btn-mini" id="saveStopwatchBtn" title="Log current session">Save Workout</button>
+                        <button type="button" class="btn-mini" id="exportCsvBtn" title="Download CSV">Export CSV</button>
+                    </div>
+                </div>
+
+                <div class="lap-list-wrapper">
+                    <table class="lap-table">
+                        <thead>
+                            <tr>
+                                <th>Lap</th>
+                                <th>Split</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lapTableBody">
+                            <tr>
+                                <td colspan="3" class="empty-state">Press <strong>Start</strong> and hit <strong>Lap (L)</strong> to record splits.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==============================================================
+                 PANEL 2: HIIT / TABATA CONFIGURATOR
+                 ============================================================== -->
+            <div class="mode-panel" id="panel-hiit">
+                <div class="card-header" style="margin-bottom: 0.65rem;">
+                    <span class="card-title">Quick Interval Presets</span>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);" id="hiitTotalEst">Est: 04:00</span>
+                </div>
+
+                <div class="preset-pills" id="hiitPresets">
+                    <button type="button" class="preset-btn active" data-work="20" data-rest="10" data-rounds="8" data-sets="1" data-setrest="60" data-prep="5">Tabata (20/10 &times; 8)</button>
+                    <button type="button" class="preset-btn" data-work="40" data-rest="20" data-rounds="6" data-sets="1" data-setrest="60" data-prep="5">HIIT 40/20 &times; 6</button>
+                    <button type="button" class="preset-btn" data-work="60" data-rest="0" data-rounds="10" data-sets="1" data-setrest="0" data-prep="5">EMOM (10 Min)</button>
+                    <button type="button" class="preset-btn" data-work="30" data-rest="15" data-rounds="4" data-sets="3" data-setrest="60" data-prep="5">3-Set Circuit</button>
+                </div>
+
+                <div class="hiit-grid">
+                    <div class="config-field">
+                        <label for="hiitWork">Work (sec)</label>
+                        <input type="number" id="hiitWork" min="1" max="3600" value="20">
+                    </div>
+                    <div class="config-field">
+                        <label for="hiitRest">Rest (sec)</label>
+                        <input type="number" id="hiitRest" min="0" max="3600" value="10">
+                    </div>
+                    <div class="config-field">
+                        <label for="hiitRounds">Rounds / Set</label>
+                        <input type="number" id="hiitRounds" min="1" max="99" value="8">
+                    </div>
+                    <div class="config-field">
+                        <label for="hiitSets">Sets</label>
+                        <input type="number" id="hiitSets" min="1" max="20" value="1">
+                    </div>
+                    <div class="config-field">
+                        <label for="hiitSetRest">Set Rest (sec)</label>
+                        <input type="number" id="hiitSetRest" min="0" max="3600" value="60">
+                    </div>
+                    <div class="config-field">
+                        <label for="hiitPrep">Prep Countdown</label>
+                        <input type="number" id="hiitPrep" min="0" max="60" value="5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==============================================================
+                 PANEL 3: COUNTDOWN TIMER CONFIGURATOR
+                 ============================================================== -->
+            <div class="mode-panel" id="panel-countdown">
+                <div class="card-header" style="margin-bottom: 0.75rem;">
+                    <span class="card-title">Quick Add Time</span>
+                    <button type="button" class="btn-mini" id="clearCountdownBtn">Clear to 00:00</button>
+                </div>
+
+                <div class="countdown-controls">
+                    <div class="quick-add-row">
+                        <button type="button" class="quick-add-btn" data-add="15">+15s</button>
+                        <button type="button" class="quick-add-btn" data-add="30">+30s</button>
+                        <button type="button" class="quick-add-btn" data-add="60">+1m</button>
+                        <button type="button" class="quick-add-btn" data-add="300">+5m</button>
+                    </div>
+
+                    <div class="hiit-grid" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="config-field">
+                            <label for="cdMinutes">Minutes</label>
+                            <input type="number" id="cdMinutes" min="0" max="180" value="1">
+                        </div>
+                        <div class="config-field">
+                            <label for="cdSeconds">Seconds</label>
+                            <input type="number" id="cdSeconds" min="0" max="59" value="30">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: WORKOUT ACCESSORIES -->
+        <aside class="accessories-stack">
+
+            <!-- ACCESSORY 1: REP & SET TALLY COUNTER -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                        Rep &amp; Set Counter
+                    </span>
+                    <button type="button" class="btn-mini" id="resetRepsBtn">Reset Reps</button>
+                </div>
+
+                <div class="rep-widget">
+                    <div class="rep-display-box">
+                        <button type="button" class="rep-btn-step" id="repMinusBtn" aria-label="Decrease Reps">&minus;</button>
+                        <div class="rep-count-center">
+                            <div class="rep-number" id="repCountDisplay">0</div>
+                            <div class="rep-target-label" id="repTargetStatus">Target: 12 reps</div>
+                        </div>
+                        <button type="button" class="rep-btn-step plus" id="repPlusBtn" aria-label="Increase Reps">+</button>
+                    </div>
+
+                    <div class="rep-progress-bar">
+                        <div class="rep-progress-fill" id="repProgressFill"></div>
+                    </div>
+
+                    <div class="rep-meta-row">
+                        <div class="config-field">
+                            <label for="repTargetInput">Target Reps</label>
+                            <input type="number" id="repTargetInput" min="1" max="999" value="12">
+                        </div>
+                        <div class="config-field">
+                            <label for="setCountInput">Completed Sets</label>
+                            <input type="number" id="setCountInput" min="0" max="99" value="0">
+                        </div>
+                        <button type="button" class="btn-secondary" id="completeSetBtn" style="padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 800; height: 42px;">
+                            +1 Set
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACCESSORY 2: AUDIO CUES & VOICE COACH -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                        Audio Cues &amp; Voice Coach
+                    </span>
+                    <button type="button" class="btn-mini" id="testAudioBtn">Test Cue</button>
+                </div>
+
+                <div class="coach-grid">
+                    <button type="button" class="toggle-tile enabled" id="soundToggleBtn">
+                        <div class="toggle-info">
+                            <strong>Synth Beeps</strong>
+                            <span id="soundStatusText">Chimes &amp; 3-2-1</span>
+                        </div>
+                        <span class="status-dot"></span>
+                    </button>
+
+                    <button type="button" class="toggle-tile enabled" id="voiceToggleBtn">
+                        <div class="toggle-info">
+                            <strong>Voice Coach</strong>
+                            <span id="voiceStatusText">TTS Announcements</span>
+                        </div>
+                        <span class="status-dot"></span>
+                    </button>
+                </div>
+
+                <div class="volume-slider-row">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">VOLUME</span>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="80" aria-label="Audio Volume">
+                    <span id="volumeValue" style="font-family: var(--font-mono); font-size: 0.78rem; width: 36px; text-align: right;">80%</span>
+                </div>
+            </div>
+
+            <!-- ACCESSORY 3: WORKOUT SESSION LOG -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        Workout Session Log
+                    </span>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);" id="sessionCountBadge">0 Saved</span>
+                </div>
+
+                <div class="log-list" id="sessionLogList">
+                    <div class="empty-state" style="padding: 1.25rem 0.5rem;">
+                        Completed HIIT workouts, countdowns, and saved stopwatch sessions appear here.
+                    </div>
+                </div>
+
+                <div class="log-actions-bar">
+                    <button type="button" class="btn-mini" id="copyLogBtn" style="flex: 1; justify-content: center;">Copy Summary</button>
+                    <button type="button" class="btn-mini" id="downloadLogBtn" style="flex: 1; justify-content: center;">Download .TXT</button>
+                    <button type="button" class="btn-mini" id="clearLogBtn">Clear</button>
+                </div>
+            </div>
+
+        </aside>
+    </main>
+
+    <!-- Floating Toast Notification -->
+    <div class="toast" id="toastBanner" role="status" aria-live="polite"></div>
+
+    <!-- ======================================================================
+         APPLICATION LOGIC (SELF-CONTAINED ES6+)
+         ====================================================================== -->
+    <script>
+        (function () {
+            'use strict';
+
+            /* ------------------------------------------------------------------
+               1. DOM REFERENCES & CONSTANTS
+               ------------------------------------------------------------------ */
+            const RING_CIRCUMFERENCE = 2 * Math.PI * 116; // r=116 -> ~728.85
+            const STORAGE_KEY_LOGS = 'kinetic_workout_logs_v1';
+
+            const els = {
+                body: document.body,
+                modeTabs: document.querySelectorAll('.mode-tab'),
+                modePanels: document.querySelectorAll('.mode-panel'),
+                progressRing: document.getElementById('progressRing'),
+                phaseBadge: document.getElementById('phaseBadge'),
+                clockMain: document.getElementById('clockMain'),
+                clockMs: document.getElementById('clockMs'),
+                subReadout: document.getElementById('subReadout'),
+                startPauseBtn: document.getElementById('startPauseBtn'),
+                secondaryActionBtn: document.getElementById('secondaryActionBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+
+                // Stopwatch Laps
+                lapCountLabel: document.getElementById('lapCountLabel'),
+                lapTableBody: document.getElementById('lapTableBody'),
+                exportCsvBtn: document.getElementById('exportCsvBtn'),
+                saveStopwatchBtn: document.getElementById('saveStopwatchBtn'),
+
+                // HIIT Inputs & Presets
+                hiitPresets: document.querySelectorAll('#hiitPresets .preset-btn'),
+                hiitWork: document.getElementById('hiitWork'),
+                hiitRest: document.getElementById('hiitRest'),
+                hiitRounds: document.getElementById('hiitRounds'),
+                hiitSets: document.getElementById('hiitSets'),
+                hiitSetRest: document.getElementById('hiitSetRest'),
+                hiitPrep: document.getElementById('hiitPrep'),
+                hiitTotalEst: document.getElementById('hiitTotalEst'),
+
+                // Countdown Inputs
+                quickAddBtns: document.querySelectorAll('.quick-add-btn'),
+                clearCountdownBtn: document.getElementById('clearCountdownBtn'),
+                cdMinutes: document.getElementById('cdMinutes'),
+                cdSeconds: document.getElementById('cdSeconds'),
+
+                // Rep Counter
+                repMinusBtn: document.getElementById('repMinusBtn'),
+                repPlusBtn: document.getElementById('repPlusBtn'),
+                repCountDisplay: document.getElementById('repCountDisplay'),
+                repTargetStatus: document.getElementById('repTargetStatus'),
+                repProgressFill: document.getElementById('repProgressFill'),
+                repTargetInput: document.getElementById('repTargetInput'),
+                setCountInput: document.getElementById('setCountInput'),
+                completeSetBtn: document.getElementById('completeSetBtn'),
+                resetRepsBtn: document.getElementById('resetRepsBtn'),
+
+                // Audio & Voice
+                soundToggleBtn: document.getElementById('soundToggleBtn'),
+                voiceToggleBtn: document.getElementById('voiceToggleBtn'),
+                soundStatusText: document.getElementById('soundStatusText'),
+                voiceStatusText: document.getElementById('voiceStatusText'),
+                volumeSlider: document.getElementById('volumeSlider'),
+                volumeValue: document.getElementById('volumeValue'),
+                testAudioBtn: document.getElementById('testAudioBtn'),
+
+                // Utilities & Logs
+                wakeLockBtn: document.getElementById('wakeLockBtn'),
+                wakeLockLabel: document.getElementById('wakeLockLabel'),
+                fullscreenBtn: document.getElementById('fullscreenBtn'),
+                sessionLogList: document.getElementById('sessionLogList'),
+                sessionCountBadge: document.getElementById('sessionCountBadge'),
+                copyLogBtn: document.getElementById('copyLogBtn'),
+                downloadLogBtn: document.getElementById('downloadLogBtn'),
+                clearLogBtn: document.getElementById('clearLogBtn'),
+                toastBanner: document.getElementById('toastBanner')
+            };
+
+            /* ------------------------------------------------------------------
+               2. APPLICATION STATE
+               ------------------------------------------------------------------ */
+            const state = {
+                mode: 'stopwatch', // 'stopwatch' | 'hiit' | 'countdown'
+                isRunning: false,
+                rafId: null,
+                lastTickTime: 0,
+
+                // Stopwatch State
+                swElapsedMs: 0,
+                swLastLapMs: 0,
+                laps: [], // { number, splitMs, totalMs }
+
+                // HIIT State
+                hiitConfig: {
+                    work: 20,
+                    rest: 10,
+                    rounds: 8,
+                    sets: 1,
+                    setRest: 60,
+                    prep: 5
+                },
+                hiitRuntime: {
+                    phase: 'idle', // 'idle' | 'prep' | 'work' | 'rest' | 'set_rest' | 'complete'
+                    phaseDurationMs: 20000,
+                    phaseRemainingMs: 20000,
+                    currentRound: 1,
+                    currentSet: 1,
+                    totalElapsedMs: 0,
+                    lastAnnouncedSec: null,
+                    halfwayAnnounced: false
+                },
+
+                // Countdown State
+                cdTotalMs: 90000,
+                cdRemainingMs: 90000,
+                cdLastAnnouncedSec: null,
+
+                // Rep Counter State
+                reps: 0,
+                repTarget: 12,
+                setsCompleted: 0,
+
+                // Audio & Voice Preferences
+                soundEnabled: true,
+                voiceEnabled: true,
+                volume: 0.8,
+                audioCtx: null,
+
+                // Screen Wake Lock
+                wakeLockSentinel: null,
+                wakeLockDesired: false,
+
+                // Workout Logs
+                logs: []
+            };
+
+            /* ------------------------------------------------------------------
+               3. TOAST & CLIPBOARD HELPERS
+               ------------------------------------------------------------------ */
+            let toastTimeout = null;
+            function showToast(message) {
+                els.toastBanner.textContent = message;
+                els.toastBanner.classList.add('show');
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    els.toastBanner.classList.remove('show');
+                }, 2600);
+            }
+
+            function copyTextFallback(text) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Copied to clipboard');
+                } catch (err) {
+                    showToast('Unable to copy automatically');
+                }
+                document.body.removeChild(textarea);
+            }
+
+            /* ------------------------------------------------------------------
+               4. WEB AUDIO API SYNTHESIZER & WEB SPEECH VOICE COACH
+               ------------------------------------------------------------------ */
+            function ensureAudioContext() {
+                if (!state.audioCtx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        state.audioCtx = new AudioCtx();
+                    }
+                }
+                if (state.audioCtx && state.audioCtx.state === 'suspended') {
+                    state.audioCtx.resume().catch(() => {});
+                }
+            }
+
+            function playTone(freq, durationSec, type = 'sine', delaySec = 0) {
+                if (!state.soundEnabled || state.volume <= 0) return;
+                ensureAudioContext();
+                if (!state.audioCtx) return;
+
+                const now = state.audioCtx.currentTime + delaySec;
+                const osc = state.audioCtx.createOscillator();
+                const gain = state.audioCtx.createGain();
+
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+
+                const peakGain = state.volume * 0.45;
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(peakGain, now + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+
+                osc.connect(gain);
+                gain.connect(state.audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + durationSec + 0.02);
+            }
+
+            function playCue(cueType) {
+                switch (cueType) {
+                    case 'countdown':
+                        playTone(660, 0.12, 'triangle');
+                        break;
+                    case 'work':
+                        // High energetic double whistle/chime
+                        playTone(880, 0.14, 'sine', 0);
+                        playTone(1174.66, 0.28, 'sine', 0.13);
+                        break;
+                    case 'rest':
+                        // Descending calming chime
+                        playTone(659.25, 0.16, 'sine', 0);
+                        playTone(440, 0.3, 'sine', 0.15);
+                        break;
+                    case 'complete':
+                        // Victory triad fanfare
+                        playTone(523.25, 0.14, 'triangle', 0);
+                        playTone(659.25, 0.14, 'triangle', 0.13);
+                        playTone(783.99, 0.14, 'triangle', 0.26);
+                        playTone(1046.50, 0.42, 'triangle', 0.39);
+                        break;
+                    case 'lap':
+                        playTone(987.77, 0.08, 'sine', 0);
+                        break;
+                }
+            }
+
+            function speakPhrase(text) {
+                if (!state.voiceEnabled || !('speechSynthesis' in window)) return;
+                try {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 1.12;
+                    utterance.pitch = 1.02;
+                    utterance.volume = state.volume;
+                    window.speechSynthesis.speak(utterance);
+                } catch (e) {
+                    // Fail silently if speech synthesis is blocked
+                }
+            }
+
+            /* ------------------------------------------------------------------
+               5. TIME FORMATTING HELPERS
+               ------------------------------------------------------------------ */
+            function formatClockParts(ms) {
+                const clamped = Math.max(0, Math.floor(ms));
+                const totalSeconds = Math.floor(clamped / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                const centiseconds = Math.floor((clamped % 1000) / 10);
+
+                const pad = (n) => String(n).padStart(2, '0');
+                const main = hours > 0
+                    ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+                    : `${pad(minutes)}:${pad(seconds)}`;
+                const sub = `.${pad(centiseconds)}`;
+                return { main, sub, full: main + sub };
+            }
+
+            function setRingProgress(fraction) {
+                const clamped = Math.max(0, Math.min(1, fraction));
+                const offset = RING_CIRCUMFERENCE * (1 - clamped);
+                els.progressRing.style.strokeDashoffset = offset.toFixed(2);
+            }
+
+            /* ------------------------------------------------------------------
+               6. MODE SWITCHING & UI RENDERING
+               ------------------------------------------------------------------ */
+            function switchMode(newMode) {
+                if (state.isRunning) {
+                    pauseTimer();
+                }
+                state.mode = newMode;
+
+                els.modeTabs.forEach((tab) => {
+                    const isMatch = tab.dataset.mode === newMode;
+                    tab.classList.toggle('active', isMatch);
+                    tab.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+                });
+
+                els.modePanels.forEach((panel) => {
+                    panel.classList.toggle('active', panel.id === `panel-${newMode}`);
+                });
+
+                if (newMode === 'stopwatch') {
+                    els.body.dataset.phase = 'stopwatch';
+                    els.secondaryActionBtn.textContent = 'Lap';
+                    els.secondaryActionBtn.disabled = !state.isRunning && state.swElapsedMs === 0;
+                    renderStopwatchUI();
+                } else if (newMode === 'hiit') {
+                    syncHiitConfigFromInputs();
+                    resetHiitState();
+                    els.secondaryActionBtn.textContent = 'Skip';
+                    els.secondaryActionBtn.disabled = true;
+                } else if (newMode === 'countdown') {
+                    els.body.dataset.phase = 'countdown';
+                    els.secondaryActionBtn.textContent = '+30s';
+                    els.secondaryActionBtn.disabled = false;
+                    syncCountdownFromInputs();
+                }
+            }
+
+            /* ------------------------------------------------------------------
+               7. STOPWATCH ENGINE & LAP MANAGEMENT
+               ------------------------------------------------------------------ */
+            function renderStopwatchUI() {
+                const parts = formatClockParts(state.swElapsedMs);
+                els.clockMain.textContent = parts.main;
+                els.clockMs.textContent = parts.sub;
+
+                // Sweep ring once every 60 seconds
+                const secondSweep = (state.swElapsedMs % 60000) / 60000;
+                setRingProgress(state.swElapsedMs === 0 ? 1 : secondSweep);
+
+                els.phaseBadge.textContent = state.isRunning
+                    ? 'RUNNING'
+                    : (state.swElapsedMs > 0 ? 'PAUSED' : 'STOPWATCH');
+
+                const currentLapMs = state.swElapsedMs - state.swLastLapMs;
+                const lapNum = state.laps.length + 1;
+                els.subReadout.textContent = `Lap ${lapNum} • ${formatClockParts(currentLapMs).full}`;
+                els.secondaryActionBtn.disabled = !state.isRunning;
+            }
+
+            function recordLap() {
+                if (state.mode !== 'stopwatch' || !state.isRunning) return;
+                const splitMs = state.swElapsedMs - state.swLastLapMs;
+                state.swLastLapMs = state.swElapsedMs;
+
+                state.laps.unshift({
+                    number: state.laps.length + 1,
+                    splitMs,
+                    totalMs: state.swElapsedMs
+                });
+
+                playCue('lap');
+                renderLapTable();
+                renderStopwatchUI();
+            }
+
+            function renderLapTable() {
+                els.lapCountLabel.textContent = state.laps.length;
+                if (state.laps.length === 0) {
+                    els.lapTableBody.innerHTML = `<tr><td colspan="3" class="empty-state">Press <strong>Start</strong> and hit <strong>Lap (L)</strong> to record splits.</td></tr>`;
+                    return;
+                }
+
+                let minSplit = Infinity;
+                let maxSplit = -Infinity;
+                if (state.laps.length >= 2) {
+                    state.laps.forEach((l) => {
+                        if (l.splitMs < minSplit) minSplit = l.splitMs;
+                        if (l.splitMs > maxSplit) maxSplit = l.splitMs;
+                    });
+                }
+
+                els.lapTableBody.innerHTML = state.laps.map((lap) => {
+                    let rowClass = '';
+                    let badge = '';
+                    if (state.laps.length >= 2 && minSplit !== maxSplit) {
+                        if (lap.splitMs === minSplit) {
+                            rowClass = 'lap-fastest';
+                            badge = '<span class="lap-badge fast">Fastest</span>';
+                        } else if (lap.splitMs === maxSplit) {
+                            rowClass = 'lap-slowest';
+                            badge = '<span class="lap-badge slow">Slowest</span>';
+                        }
+                    }
+                    return `
+                        <tr class="${rowClass}">
+                            <td>#${String(lap.number).padStart(2, '0')} ${badge}</td>
+                            <td>${formatClockParts(lap.splitMs).full}</td>
+                            <td>${formatClockParts(lap.totalMs).full}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            function exportLapsCSV() {
+                if (state.laps.length === 0) {
+                    showToast('No laps recorded to export');
+                    return;
+                }
+                const header = 'Lap,Split Time,Total Time,Split (ms),Total (ms)\n';
+                const rows = [...state.laps].reverse().map((l) =>
+                    `${l.number},${formatClockParts(l.splitMs).full},${formatClockParts(l.totalMs).full},${Math.round(l.splitMs)},${Math.round(l.totalMs)}`
+                ).join('\n');
+
+                downloadTextFile(header + rows, `kinetic-laps-${Date.now()}.csv`, 'text/csv');
+                showToast('Laps exported as CSV');
+            }
+
+            /* ------------------------------------------------------------------
+               8. HIIT / TABATA INTERVAL ENGINE
+               ------------------------------------------------------------------ */
+            function syncHiitConfigFromInputs() {
+                state.hiitConfig.work = Math.max(1, parseInt(els.hiitWork.value, 10) || 20);
+                state.hiitConfig.rest = Math.max(0, parseInt(els.hiitRest.value, 10) || 0);
+                state.hiitConfig.rounds = Math.max(1, parseInt(els.hiitRounds.value, 10) || 1);
+                state.hiitConfig.sets = Math.max(1, parseInt(els.hiitSets.value, 10) || 1);
+                state.hiitConfig.setRest = Math.max(0, parseInt(els.hiitSetRest.value, 10) || 0);
+                state.hiitConfig.prep = Math.max(0, parseInt(els.hiitPrep.value, 10) || 0);
+
+                // Estimate total workout duration
+                const c = state.hiitConfig;
+                const oneSetSec = (c.work * c.rounds) + (c.rest * Math.max(0, c.rounds - 1));
+                const totalSec = c.prep + (oneSetSec * c.sets) + (c.setRest * Math.max(0, c.sets - 1));
+                const mins = Math.floor(totalSec / 60);
+                const secs = totalSec % 60;
+                els.hiitTotalEst.textContent = `Est: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+
+            function resetHiitState() {
+                const c = state.hiitConfig;
+                state.hiitRuntime = {
+                    phase: 'idle',
+                    phaseDurationMs: c.work * 1000,
+                    phaseRemainingMs: c.work * 1000,
+                    currentRound: 1,
+                    currentSet: 1,
+                    totalElapsedMs: 0,
+                    lastAnnouncedSec: null,
+                    halfwayAnnounced: false
+                };
+                els.body.dataset.phase = 'work';
+                renderHiitUI();
+            }
+
+            function enterHiitPhase(phaseName, durationSec, announceText, cueType) {
+                const rt = state.hiitRuntime;
+                rt.phase = phaseName;
+                rt.phaseDurationMs = Math.max(1, durationSec * 1000);
+                rt.phaseRemainingMs = durationSec * 1000;
+                rt.lastAnnouncedSec = null;
+                rt.halfwayAnnounced = false;
+
+                els.body.dataset.phase = phaseName === 'complete' ? 'work' : phaseName;
+                if (cueType) playCue(cueType);
+                if (announceText) speakPhrase(announceText);
+                renderHiitUI();
+            }
+
+            function advanceHiitPhase() {
+                const c = state.hiitConfig;
+                const rt = state.hiitRuntime;
+
+                if (rt.phase === 'idle') {
+                    if (c.prep > 0) {
+                        enterHiitPhase('prep', c.prep, 'Get ready', 'countdown');
+                    } else {
+                        enterHiitPhase('work', c.work, `Work. Round 1`, 'work');
+                    }
+                    return;
+                }
+
+                if (rt.phase === 'prep') {
+                    enterHiitPhase('work', c.work, `Work. Round ${rt.currentRound}`, 'work');
+                    return;
+                }
+
+                if (rt.phase === 'work') {
+                    // Check if more rounds in current set
+                    if (rt.currentRound < c.rounds) {
+                        if (c.rest > 0) {
+                            enterHiitPhase('rest', c.rest, 'Rest', 'rest');
+                        } else {
+                            rt.currentRound++;
+                            enterHiitPhase('work', c.work, `Round ${rt.currentRound}`, 'work');
+                        }
+                    } else if (rt.currentSet < c.sets) {
+                        // Set finished, move to set rest or next set
+                        if (c.setRest > 0) {
+                            enterHiitPhase('set_rest', c.setRest, `Set ${rt.currentSet} complete. Rest between sets`, 'rest');
+                        } else {
+                            rt.currentSet++;
+                            rt.currentRound = 1;
+                            enterHiitPhase('work', c.work, `Set ${rt.currentSet}. Work`, 'work');
+                        }
+                    } else {
+                        // Workout complete!
+                        finishHiitWorkout();
+                    }
+                    return;
+                }
+
+                if (rt.phase === 'rest') {
+                    rt.currentRound++;
+                    enterHiitPhase('work', c.work, `Work. Round ${rt.currentRound}`, 'work');
+                    return;
+                }
+
+                if (rt.phase === 'set_rest') {
+                    rt.currentSet++;
+                    rt.currentRound = 1;
+                    enterHiitPhase('work', c.work, `Set ${rt.currentSet}. Round 1. Work`, 'work');
+                }
+            }
+
+            function finishHiitWorkout() {
+                const c = state.hiitConfig;
+                const rt = state.hiitRuntime;
+                rt.phase = 'complete';
+                rt.phaseRemainingMs = 0;
+                pauseTimer();
+                playCue('complete');
+                speakPhrase('Workout complete. Great job!');
+                renderHiitUI();
+
+                addWorkoutLog({
+                    title: `HIIT (${c.work}s/${c.rest}s)`,
+                    detail: `${c.sets} Set${c.sets > 1 ? 's' : ''} × ${c.rounds} Rounds • Total ${formatClockParts(rt.totalElapsedMs).main}`
+                });
+                showToast('HIIT Workout Complete & Logged!');
+            }
+
+            function renderHiitUI() {
+                const c = state.hiitConfig;
+                const rt = state.hiitRuntime;
+                const parts = formatClockParts(rt.phaseRemainingMs);
+
+                els.clockMain.textContent = parts.main;
+                els.clockMs.textContent = parts.sub;
+
+                const ratio = rt.phase === 'idle'
+                    ? 1
+                    : (rt.phase === 'complete' ? 0 : rt.phaseRemainingMs / rt.phaseDurationMs);
+                setRingProgress(ratio);
+
+                const badgeLabels = {
+                    idle: 'HIIT READY',
+                    prep: 'GET READY',
+                    work: 'WORK',
+                    rest: 'REST',
+                    set_rest: 'SET REST',
+                    complete: 'COMPLETE'
+                };
+                els.phaseBadge.textContent = badgeLabels[rt.phase] || 'HIIT';
+                els.subReadout.textContent = `Set ${rt.currentSet}/${c.sets} • Round ${rt.currentRound}/${c.rounds}`;
+                els.secondaryActionBtn.disabled = !state.isRunning;
+            }
+
+            /* ------------------------------------------------------------------
+               9. COUNTDOWN ENGINE
+               ------------------------------------------------------------------ */
+            function syncCountdownFromInputs() {
+                const mins = Math.max(0, parseInt(els.cdMinutes.value, 10) || 0);
+                const secs = Math.max(0, Math.min(59, parseInt(els.cdSeconds.value, 10) || 0));
+                state.cdTotalMs = (mins * 60 + secs) * 1000;
+                state.cdRemainingMs = state.cdTotalMs;
+                state.cdLastAnnouncedSec = null;
+                renderCountdownUI();
+            }
+
+            function addCountdownSeconds(secToAdd) {
+                const addedMs = secToAdd * 1000;
+                state.cdTotalMs += addedMs;
+                state.cdRemainingMs += addedMs;
+
+                const totalSec = Math.floor(state.cdTotalMs / 1000);
+                els.cdMinutes.value = Math.floor(totalSec / 60);
+                els.cdSeconds.value = totalSec % 60;
+                renderCountdownUI();
+            }
+
+            function renderCountdownUI() {
+                const parts = formatClockParts(state.cdRemainingMs);
+                els.clockMain.textContent = parts.main;
+                els.clockMs.textContent = parts.sub;
+
+                const fraction = state.cdTotalMs > 0 ? state.cdRemainingMs / state.cdTotalMs : 0;
+                setRingProgress(fraction);
+
+                els.phaseBadge.textContent = state.isRunning
+                    ? 'COUNTDOWN'
+                    : (state.cdRemainingMs === 0 && state.cdTotalMs > 0 ? 'TIME UP' : 'TIMER');
+                els.subReadout.textContent = `Target: ${formatClockParts(state.cdTotalMs).main}`;
+            }
+
+            /* ------------------------------------------------------------------
+               10. HIGH-PRECISION RAF ANIMATION LOOP & TRANSPORT
+               ------------------------------------------------------------------ */
+            function startTimer() {
+                if (state.isRunning) return;
+                ensureAudioContext();
+
+                if (state.mode === 'hiit') {
+                    if (state.hiitRuntime.phase === 'complete') {
+                        resetHiitState();
+                    }
+                    if (state.hiitRuntime.phase === 'idle') {
+                        syncHiitConfigFromInputs();
+                        advanceHiitPhase();
+                    }
+                } else if (state.mode === 'countdown') {
+                    if (state.cdRemainingMs <= 0) {
+                        syncCountdownFromInputs();
+                    }
+                    if (state.cdRemainingMs <= 0) {
+                        showToast('Set a duration greater than 00:00');
+                        return;
+                    }
+                    playCue('work');
+                } else if (state.mode === 'stopwatch' && state.swElapsedMs === 0) {
+                    playCue('work');
+                }
+
+                state.isRunning = true;
+                state.lastTickTime = performance.now();
+                els.startPauseBtn.textContent = 'Pause';
+                state.rafId = requestAnimationFrame(tick);
+            }
+
+            function pauseTimer() {
+                state.isRunning = false;
+                if (state.rafId) {
+                    cancelAnimationFrame(state.rafId);
+                    state.rafId = null;
+                }
+                els.startPauseBtn.textContent = 'Resume';
+                if (state.mode === 'stopwatch') renderStopwatchUI();
+                if (state.mode === 'hiit') renderHiitUI();
+                if (state.mode === 'countdown') renderCountdownUI();
+            }
+
+            function resetTimer() {
+                pauseTimer();
+                els.startPauseBtn.textContent = 'Start';
+
+                if (state.mode === 'stopwatch') {
+                    state.swElapsedMs = 0;
+                    state.swLastLapMs = 0;
+                    state.laps = [];
+                    renderLapTable();
+                    renderStopwatchUI();
+                } else if (state.mode === 'hiit') {
+                    syncHiitConfigFromInputs();
+                    resetHiitState();
+                } else if (state.mode === 'countdown') {
+                    syncCountdownFromInputs();
+                }
+            }
+
+            function tick(now) {
+                if (!state.isRunning) return;
+                const deltaMs = now - state.lastTickTime;
+                state.lastTickTime = now;
+
+                if (state.mode === 'stopwatch') {
+                    state.swElapsedMs += deltaMs;
+                    renderStopwatchUI();
+                } else if (state.mode === 'hiit') {
+                    const rt = state.hiitRuntime;
+                    rt.totalElapsedMs += deltaMs;
+                    rt.phaseRemainingMs -= deltaMs;
+
+                    // Check halfway announcement on work intervals >= 20s
+                    if (rt.phase === 'work' && rt.phaseDurationMs >= 20000 && !rt.halfwayAnnounced) {
+                        if (rt.phaseRemainingMs <= rt.phaseDurationMs / 2) {
+                            rt.halfwayAnnounced = true;
+                            speakPhrase('Halfway');
+                        }
+                    }
+
+                    // 3-2-1 countdown cues
+                    const ceilSec = Math.ceil(rt.phaseRemainingMs / 1000);
+                    if (ceilSec <= 3 && ceilSec >= 1 && ceilSec !== rt.lastAnnouncedSec) {
+                        rt.lastAnnouncedSec = ceilSec;
+                        playCue('countdown');
+                        if (rt.phaseDurationMs >= 6000) {
+                            speakPhrase(String(ceilSec));
+                        }
+                    }
+
+                    if (rt.phaseRemainingMs <= 0) {
+                        advanceHiitPhase();
+                    } else {
+                        renderHiitUI();
+                    }
+                } else if (state.mode === 'countdown') {
+                    state.cdRemainingMs -= deltaMs;
+
+                    const ceilSec = Math.ceil(state.cdRemainingMs / 1000);
+                    if (ceilSec <= 3 && ceilSec >= 1 && ceilSec !== state.cdLastAnnouncedSec) {
+                        state.cdLastAnnouncedSec = ceilSec;
+                        playCue('countdown');
+                        speakPhrase(String(ceilSec));
+                    }
+
+                    if (state.cdRemainingMs <= 0) {
+                        state.cdRemainingMs = 0;
+                        pauseTimer();
+                        els.startPauseBtn.textContent = 'Start';
+                        renderCountdownUI();
+                        playCue('complete');
+                        speakPhrase('Time is up');
+                        addWorkoutLog({
+                            title: 'Countdown Timer',
+                            detail: `Completed ${formatClockParts(state.cdTotalMs).main}`
+                        });
+                        showToast('Countdown Complete!');
+                        return;
+                    }
+                    renderCountdownUI();
+                }
+
+                if (state.isRunning) {
+                    state.rafId = requestAnimationFrame(tick);
+                }
+            }
+
+            /* ------------------------------------------------------------------
+               11. REP & SET COUNTER LOGIC
+               ------------------------------------------------------------------ */
+            function updateRepUI() {
+                els.repCountDisplay.textContent = state.reps;
+                state.repTarget = Math.max(1, parseInt(els.repTargetInput.value, 10) || 12);
+                state.setsCompleted = Math.max(0, parseInt(els.setCountInput.value, 10) || 0);
+
+                const pct = Math.min(100, (state.reps / state.repTarget) * 100);
+                els.repProgressFill.style.width = `${pct}%`;
+
+                if (state.reps >= state.repTarget) {
+                    els.repTargetStatus.textContent = `Target Reached! (${state.reps}/${state.repTarget})`;
+                    els.repTargetStatus.style.color = 'var(--accent-work)';
+                } else {
+                    els.repTargetStatus.textContent = `Target: ${state.repTarget} reps (${Math.round(pct)}%)`;
+                    els.repTargetStatus.style.color = 'var(--text-secondary)';
+                }
+            }
+
+            /* ------------------------------------------------------------------
+               12. WORKOUT SESSION LOGGING (LOCALSTORAGE + EXPORT)
+               ------------------------------------------------------------------ */
+            function loadLogs() {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY_LOGS);
+                    if (saved) state.logs = JSON.parse(saved);
+                } catch (e) {
+                    state.logs = [];
+                }
+                renderLogs();
+            }
+
+            function saveLogs() {
+                try {
+                    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(state.logs));
+                } catch (e) {
+                    // Ignore storage quota errors
+                }
+            }
+
+            function addWorkoutLog(entry) {
+                const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                state.logs.unshift({
+                    id: Date.now(),
+                    time: timestamp,
+                    title: entry.title,
+                    detail: entry.detail,
+                    repsInfo: state.setsCompleted > 0 || state.reps > 0
+                        ? ` • ${state.setsCompleted} Sets / ${state.reps} Reps`
+                        : ''
+                });
+                saveLogs();
+                renderLogs();
+            }
+
+            function renderLogs() {
+                els.sessionCountBadge.textContent = `${state.logs.length} Saved`;
+                if (state.logs.length === 0) {
+                    els.sessionLogList.innerHTML = `<div class="empty-state" style="padding: 1.25rem 0.5rem;">Completed HIIT workouts, countdowns, and saved stopwatch sessions appear here.</div>`;
+                    return;
+                }
+
+                els.sessionLogList.innerHTML = state.logs.map((item) => `
+                    <div class="log-item">
+                        <div class="log-item-main">
+                            <span class="log-item-title">${item.title}</span>
+                            <span class="log-item-meta">${item.detail}${item.repsInfo || ''}</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">${item.time}</span>
+                    </div>
+                `).join('');
+            }
+
+            function buildLogSummaryText() {
+                if (state.logs.length === 0) return '';
+                const dateStr = new Date().toLocaleDateString();
+                const lines = [`KINETIC WORKOUT SUMMARY (${dateStr})`, '----------------------------------------'];
+                state.logs.forEach((l, idx) => {
+                    lines.push(`${idx + 1}. [${l.time}] ${l.title} — ${l.detail}${l.repsInfo || ''}`);
+                });
+                return lines.join('\n');
+            }
+
+            function downloadTextFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            /* ------------------------------------------------------------------
+               13. SCREEN WAKE LOCK & FULLSCREEN API
+               ------------------------------------------------------------------ */
+            async function toggleWakeLock() {
+                if (!('wakeLock' in navigator)) {
+                    showToast('Screen Wake Lock not supported on this browser');
+                    return;
+                }
+
+                if (state.wakeLockSentinel) {
+                    state.wakeLockDesired = false;
+                    await state.wakeLockSentinel.release();
+                    state.wakeLockSentinel = null;
+                    updateWakeLockUI(false);
+                    showToast('Screen Wake Lock disabled');
+                } else {
+                    try {
+                        state.wakeLockDesired = true;
+                        state.wakeLockSentinel = await navigator.wakeLock.request('screen');
+                        updateWakeLockUI(true);
+                        showToast('Screen will stay awake during workout');
+                        state.wakeLockSentinel.addEventListener('release', () => {
+                            state.wakeLockSentinel = null;
+                            updateWakeLockUI(false);
+                        });
+                    } catch (err) {
+                        updateWakeLockUI(false);
+                        showToast('Could not activate Wake Lock');
+                    }
+                }
+            }
+
+            function updateWakeLockUI(active) {
+                els.wakeLockBtn.classList.toggle('active', active);
+                els.wakeLockLabel.textContent = active ? 'Screen Awake: On' : 'Screen Awake: Off';
+            }
+
+            document.addEventListener('visibilitychange', async () => {
+                if (state.wakeLockDesired && document.visibilityState === 'visible' && !state.wakeLockSentinel) {
+                    try {
+                        state.wakeLockSentinel = await navigator.wakeLock.request('screen');
+                        updateWakeLockUI(true);
+                    } catch (e) {}
+                }
+            });
+
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {
+                        showToast('Fullscreen unavailable');
+                    });
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+
+            /* ------------------------------------------------------------------
+               14. EVENT LISTENERS & KEYBOARD SHORTCUTS
+               ------------------------------------------------------------------ */
+            // Mode tabs
+            els.modeTabs.forEach((tab) => {
+                tab.addEventListener('click', () => switchMode(tab.dataset.mode));
+            });
+
+            // Primary transport
+            els.startPauseBtn.addEventListener('click', () => {
+                if (state.isRunning) pauseTimer();
+                else startTimer();
+            });
+
+            els.resetBtn.addEventListener('click', resetTimer);
+
+            els.secondaryActionBtn.addEventListener('click', () => {
+                if (state.mode === 'stopwatch') {
+                    recordLap();
+                } else if (state.mode === 'hiit' && state.isRunning) {
+                    advanceHiitPhase();
+                } else if (state.mode === 'countdown') {
+                    addCountdownSeconds(30);
+                }
+            });
+
+            // Stopwatch export & save
+            els.exportCsvBtn.addEventListener('click', exportLapsCSV);
+            els.saveStopwatchBtn.addEventListener('click', () => {
+                if (state.swElapsedMs === 0) {
+                    showToast('Start the stopwatch before saving');
+                    return;
+                }
+                addWorkoutLog({
+                    title: 'Stopwatch Session',
+                    detail: `Time ${formatClockParts(state.swElapsedMs).full} • ${state.laps.length} Laps`
+                });
+                showToast('Stopwatch session logged');
+            });
+
+            // HIIT Presets & Inputs
+            els.hiitPresets.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    els.hiitPresets.forEach((b) => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    els.hiitWork.value = btn.dataset.work;
+                    els.hiitRest.value = btn.dataset.rest;
+                    els.hiitRounds.value = btn.dataset.rounds;
+                    els.hiitSets.value = btn.dataset.sets;
+                    els.hiitSetRest.value = btn.dataset.setrest;
+                    els.hiitPrep.value = btn.dataset.prep;
+
+                    if (state.isRunning) pauseTimer();
+                    syncHiitConfigFromInputs();
+                    resetHiitState();
+                });
+            });
+
+            [els.hiitWork, els.hiitRest, els.hiitRounds, els.hiitSets, els.hiitSetRest, els.hiitPrep].forEach((inp) => {
+                inp.addEventListener('change', () => {
+                    if (!state.isRunning) {
+                        syncHiitConfigFromInputs();
+                        resetHiitState();
+                    }
+                });
+            });
+
+            // Countdown controls
+            els.quickAddBtns.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    addCountdownSeconds(parseInt(btn.dataset.add, 10));
+                });
+            });
+
+            els.clearCountdownBtn.addEventListener('click', () => {
+                if (state.isRunning) pauseTimer();
+                els.cdMinutes.value = 0;
+                els.cdSeconds.value = 0;
+                syncCountdownFromInputs();
+            });
+
+            [els.cdMinutes, els.cdSeconds].forEach((inp) => {
+                inp.addEventListener('change', () => {
+                    if (!state.isRunning) syncCountdownFromInputs();
+                });
+            });
+
+            // Rep Counter events
+            els.repPlusBtn.addEventListener('click', () => {
+                state.reps++;
+                playTone(740, 0.06, 'sine');
+                updateRepUI();
+            });
+
+            els.repMinusBtn.addEventListener('click', () => {
+                state.reps = Math.max(0, state.reps - 1);
+                updateRepUI();
+            });
+
+            els.repTargetInput.addEventListener('change', updateRepUI);
+            els.setCountInput.addEventListener('change', updateRepUI);
+
+            els.completeSetBtn.addEventListener('click', () => {
+                state.setsCompleted++;
+                els.setCountInput.value = state.setsCompleted;
+                state.reps = 0;
+                playCue('work');
+                updateRepUI();
+                showToast(`Set ${state.setsCompleted} logged!`);
+            });
+
+            els.resetRepsBtn.addEventListener('click', () => {
+                state.reps = 0;
+                state.setsCompleted = 0;
+                els.setCountInput.value = 0;
+                updateRepUI();
+            });
+
+            // Audio & Voice Toggles
+            els.soundToggleBtn.addEventListener('click', () => {
+                state.soundEnabled = !state.soundEnabled;
+                els.soundToggleBtn.classList.toggle('enabled', state.soundEnabled);
+                els.soundStatusText.textContent = state.soundEnabled ? 'Chimes & 3-2-1' : 'Muted';
+                if (state.soundEnabled) playCue('lap');
+            });
+
+            els.voiceToggleBtn.addEventListener('click', () => {
+                state.voiceEnabled = !state.voiceEnabled;
+                els.voiceToggleBtn.classList.toggle('enabled', state.voiceEnabled);
+                els.voiceStatusText.textContent = state.voiceEnabled ? 'TTS Announcements' : 'Voice Off';
+                if (state.voiceEnabled) speakPhrase('Voice coach active');
+            });
+
+            els.volumeSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                state.volume = val / 100;
+                els.volumeValue.textContent = `${val}%`;
+            });
+
+            els.testAudioBtn.addEventListener('click', () => {
+                ensureAudioContext();
+                playCue('work');
+                speakPhrase('Work. Round 1');
+            });
+
+            // Session Log Actions
+            els.copyLogBtn.addEventListener('click', () => {
+                const text = buildLogSummaryText();
+                if (!text) {
+                    showToast('No workouts logged yet');
+                    return;
+                }
+                copyTextFallback(text);
+            });
+
+            els.downloadLogBtn.addEventListener('click', () => {
+                const text = buildLogSummaryText();
+                if (!text) {
+                    showToast('No workouts logged yet');
+                    return;
+                }
+                downloadTextFile(text, `kinetic-workout-log-${Date.now()}.txt`, 'text/plain');
+                showToast('Workout summary downloaded');
+            });
+
+            els.clearLogBtn.addEventListener('click', () => {
+                state.logs = [];
+                saveLogs();
+                renderLogs();
+                showToast('Session log cleared');
+            });
+
+            // Utilities
+            els.wakeLockBtn.addEventListener('click', toggleWakeLock);
+            els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+            // Global Keyboard Shortcuts (ignore when typing in inputs)
+            document.addEventListener('keydown', (e) => {
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (state.isRunning) pauseTimer();
+                    else startTimer();
+                } else if (e.key.toLowerCase() === 'l') {
+                    if (state.mode === 'stopwatch' && state.isRunning) recordLap();
+                    else if (state.mode === 'hiit' && state.isRunning) advanceHiitPhase();
+                } else if (e.key.toLowerCase() === 'r') {
+                    resetTimer();
+                }
+            });
+
+            /* ------------------------------------------------------------------
+               15. INITIALIZATION
+               ------------------------------------------------------------------ */
+            loadLogs();
+            updateRepUI();
+            renderStopwatchUI();
+        })();
+    </script>
+</body>
+</html>
